@@ -3,7 +3,9 @@
 ## Instalacja
 ```bash
 pip install -r requirements.txt
-```bash
+```
 
 ## Uruchomienie
+```bash
 python main.py
+```
