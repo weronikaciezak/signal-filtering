@@ -1,3 +1,4 @@
+from scipy import signal
 from tkinter import filedialog, messagebox
 import tkinter as tk
 import numpy as np
@@ -56,12 +57,12 @@ def plot_signal(signal, time, title):
 def filter_signal():
     global filtered_signal
 
-    signal = data[channel_var.get() - 1]
+    sig = data[channel_var.get() - 1]
     filter_type = filter_kind.get()
     window_type = window_var.get()
 
     fs = float(sample_rate.get())
-    N = signal.shape[0]
+    N = sig.shape[0]
     t = np.arange(N) / fs
     numtaps = 101
 
@@ -74,19 +75,24 @@ def filter_signal():
         "prostokątne": "boxcar",
     }
 
-    if filter_type == "dolnoprzepustowy":
-        cutoff = [fs * 0.1]
-        fir_coeff = firwin(numtaps, cutoff[0], window=window_dict[window_type], fs=fs)
-    elif filter_type == "gornoprzepustowy":
-        cutoff = [fs * 0.1]
-        fir_coeff = firwin(numtaps, cutoff[0], window=window_dict[window_type], fs=fs, pass_zero=False)
-    elif filter_type == "pasmowozaporowy":
-        cutoff = [fs * 0.2, fs * 0.3]
-        fir_coeff = firwin(numtaps, cutoff, window=window_dict[window_type], fs=fs, pass_zero=True)
+    if filter_type == "filtrowanie przez średnią krocząca":
+        window_values = signal.windows.get_window(window_dict[window_type], numtaps)
+        fir_coeff = window_values / np.sum(window_values)
+
+    elif filter_type == "filtrowanie SINC":
+        cutoff = 0.1
+        win = window_dict[window_type]
+        fir_coeff = firwin(numtaps, cutoff, window=win)
+
+    elif filter_type == "filtrowanie przez splot":
+        window_values = signal.windows.get_window(window_dict[window_type], 3)
+        fir_coeff = np.zeros(numtaps)
+        fir_coeff[:3] = window_values / np.sum(window_values)
+
     else:
         raise ValueError("Nieznany typ filtru.")
 
-    filtered_signal = lfilter(fir_coeff, 1.0, signal)
+    filtered_signal = lfilter(fir_coeff, 1.0, sig)
     plot_signal(filtered_signal, t,"filtered signal")
 
 
@@ -152,9 +158,9 @@ sample_rate = tk.StringVar(value="1")
 tk.Label(choice_frame, text="Podaj próbkowanie:").grid(row=0, column=0, padx=10, pady=5)
 tk.Entry(choice_frame, textvariable=sample_rate).grid(row=1, column=0, padx=10, pady=5)
 
-filter_kind = tk.StringVar(value="dolnoprzepustowy")
+filter_kind = tk.StringVar(value="filtrowanie przez średnią krocząca")
 tk.Label(choice_frame, text="Wybierz rodzaj filtrowania:").grid(row=0, column=1, padx=10, pady=5)
-tk.OptionMenu(choice_frame, filter_kind, "dolnoprzepustowy", "gornoprzepustowy", "pasmowozaporowy").grid(row=1, column=1, padx=10, pady=5)
+tk.OptionMenu(choice_frame, filter_kind, "filtrowanie przez średnią krocząca", "filtrowanie SINC", "filtrowanie przez splot").grid(row=1, column=1, padx=10, pady=5)
 
 window_var = tk.StringVar(value="prostokątne")
 tk.Label(choice_frame, text="Wybierz okno:").grid(row=0, column=3, padx=10, pady=5)
